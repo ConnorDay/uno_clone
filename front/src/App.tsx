@@ -3,7 +3,7 @@ import "./App.css";
 import { Homescreen, Lobby } from "./routes";
 
 function App() {
-    const [toDisplay, setDisplay] = useState(<Lobby />);
+    const [toDisplay, setDisplay] = useState(<Homescreen />);
     return <div className="App">{toDisplay}</div>;
 }
 

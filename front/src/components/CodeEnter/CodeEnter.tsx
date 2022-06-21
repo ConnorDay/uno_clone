@@ -1,11 +1,27 @@
 import { useState } from "react";
 import "./CodeEnter.css";
 
-function handleSubmit(e: any, code: string, setText: (text: string) => void) {
-    console.log(code);
+function handleSubmit(
+    e: React.FormEvent<HTMLFormElement>,
+    code: string,
+    setText: (text: string) => void
+) {
     setText("");
 
     e.preventDefault();
+}
+
+function handleTextChange(
+    event: React.ChangeEvent<HTMLInputElement>,
+    setInputText: (text: string) => void
+) {
+    //Check if the new text has an invalid character (non-alphanumeric)
+    const isInvalid = /[^a-z0-9]+/i.test(event.target.value);
+
+    //Only set the new text if it is valid
+    if (!isInvalid) {
+        setInputText(event.target.value);
+    }
 }
 
 function CodeEnter() {
@@ -19,7 +35,7 @@ function CodeEnter() {
             <input
                 type="text"
                 id="codeInput"
-                onChange={(event) => setInputText(event.target.value)}
+                onChange={(event) => handleTextChange(event, setInputText)}
                 value={inputText}
             />
         </form>
