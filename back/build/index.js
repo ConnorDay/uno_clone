@@ -14,7 +14,25 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
+const http_1 = __importDefault(require("http"));
+const socket_io_1 = require("socket.io");
+//Setup
 const app = (0, express_1.default)();
+const server = http_1.default.createServer(app);
+const io = new socket_io_1.Server(server, {
+    cors: {
+        origin: "*",
+    },
+});
+//////////////////
+//Socket Methods//
+//////////////////
+io.on("connection", (socket) => {
+    console.log("a user connected");
+});
+////////////////
+//HTTP METHODS//
+////////////////
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 const router = express_1.default.Router();
@@ -22,4 +40,4 @@ router.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     res.json({ message: "it worked" });
 }));
 app.use("/", router);
-app.listen(8000, () => console.log("Server has started"));
+server.listen(8000, () => console.log("Server has been started"));
