@@ -16,7 +16,7 @@ function handleTextChange(
     setInputText: (text: string) => void
 ) {
     //Check if the new text has an invalid character (non-alphanumeric)
-    const isInvalid = /[^a-z0-9]+/i.test(event.target.value);
+    const isInvalid = /[^a-z0-9\-\_]+/i.test(event.target.value);
 
     //Only set the new text if it is valid
     if (!isInvalid) {
