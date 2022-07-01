@@ -24,13 +24,17 @@ class Room {
         }
         const targetRoom = Room.allRooms[code];
 
-        //Let all other players in the room know that a new player has connected
-        targetRoom.emitAll("playerConnected", { name });
-
         //Sync the new player so that they get all other connections
         //NOTE: this happens after adding the player so that they can see themselves in the player list
-        targetRoom.addPlayer(new Player(name, code, socket));
-        socket.emit("playerSync", targetRoom.playerSyncInfo);
+        const player = new Player(name, code, socket);
+        targetRoom.addPlayer(player);
+        targetRoom.emitAll("playerSync", targetRoom.playerSyncInfo);
+
+        //Send a sync player signal on player disconnect
+        socket.on("disconnect", () => {
+            targetRoom.removePlayer(player);
+            targetRoom.emitAll("playerSync", targetRoom.playerSyncInfo);
+        });
     }
 
     ////////////
@@ -39,6 +43,12 @@ class Room {
 
     public addPlayer(player: Player) {
         this.players.push(player);
+    }
+
+    public removePlayer(toRemove: Player) {
+        this.players = this.players.filter((player) => {
+            return player !== toRemove;
+        });
     }
 
     public emitAll(ev: string, ...args: any[]) {

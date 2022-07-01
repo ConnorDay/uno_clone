@@ -13,7 +13,7 @@ function Lobby(props: Props) {
 
     const [socket, setSocket] = useState<Socket>();
 
-    const [count, setCount] = useState(0);
+    const [players, setPlayers] = useState<string[]>([]);
 
     useEffect(() => {
         const socket = io(
@@ -26,12 +26,9 @@ function Lobby(props: Props) {
             }
         );
 
-        socket.on("playerConnected", (player) => {
-            console.log(`Player ${player.name} connected!`);
-        });
-
         socket.on("playerSync", (playerList) => {
             console.log("playerSync", playerList);
+            setPlayers(playerList);
         });
 
         setSocket(socket);
@@ -52,16 +49,13 @@ function Lobby(props: Props) {
         return <>Connecting...</>;
     }
 
+    let counter = 0;
+
     return (
-        <div>
-            {count}
-            <button
-                onClick={() => {
-                    setCount(count + 1);
-                }}
-            >
-                +
-            </button>
+        <div className="lobbyRoot">
+            {players.map((player) => {
+                return <p id={`player_${counter++}`}>{player}</p>;
+            })}
             <button
                 onClick={() => {
                     closeSocket();
