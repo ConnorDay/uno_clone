@@ -1,0 +1,4 @@
+.lobbyRoot {
+    display: flex;
+    flex-direction: column;
+}

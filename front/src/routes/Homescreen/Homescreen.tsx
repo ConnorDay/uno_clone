@@ -1,11 +1,31 @@
+import { Lobby } from "..";
 import { CodeEnter } from "../../components";
 import "./Homescreen.css";
 
-function Homescreen() {
+type Props = {
+    setDisplay: React.Dispatch<React.SetStateAction<JSX.Element>>;
+};
+
+function changeDisplay(
+    setDisplay: React.Dispatch<React.SetStateAction<JSX.Element>>,
+    code: string,
+    name: string
+) {
+    setDisplay(
+        <Lobby connectionInfo={{ code, name }} setDisplay={setDisplay} />
+    );
+}
+
+function Homescreen(props: Props) {
+    const { setDisplay } = props;
+
     return (
         <div className="homescreen">
-            <p>{process.env.REACT_APP_HOST}</p>
-            <CodeEnter />
+            <CodeEnter
+                onSubmit={(code: string, name: string) => {
+                    changeDisplay(setDisplay, code, name);
+                }}
+            />
         </div>
     );
 }
