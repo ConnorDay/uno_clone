@@ -3,41 +3,77 @@ import "./CodeEnter.css";
 
 function handleSubmit(
     e: React.FormEvent<HTMLFormElement>,
+    onSubmit: (code: string, name: string) => void,
     code: string,
-    setText: (text: string) => void
+    setCode: (text: string) => void,
+    name: string,
+    setName: (text: string) => void
 ) {
-    setText("");
-
+    //Prevent the page from reloading
     e.preventDefault();
+
+    //Clear text inputs
+    setCode("");
+    setName("");
+
+    //Call the callback
+    onSubmit(code, name);
 }
 
 function handleTextChange(
     event: React.ChangeEvent<HTMLInputElement>,
-    setInputText: (text: string) => void
+    setText: (text: string) => void
 ) {
     //Check if the new text has an invalid character (non-alphanumeric)
     const isInvalid = /[^a-z0-9\-\_]+/i.test(event.target.value);
 
     //Only set the new text if it is valid
     if (!isInvalid) {
-        setInputText(event.target.value);
+        setText(event.target.value);
     }
 }
 
-function CodeEnter() {
-    const [inputText, setInputText] = useState("");
+type Props = {
+    onSubmit: (code: string, name: string) => void;
+};
+
+function CodeEnter(props: Props) {
+    const [codeInputText, setCodeInputText] = useState("");
+    const [nameInputText, setNameInputText] = useState("");
+
+    const { onSubmit } = props;
+
     return (
         <form
             className="CodeEnter"
-            onSubmit={(e) => handleSubmit(e, inputText, setInputText)}
+            onSubmit={(e) =>
+                handleSubmit(
+                    e,
+                    onSubmit,
+                    codeInputText,
+                    setCodeInputText,
+                    nameInputText,
+                    setNameInputText
+                )
+            }
         >
-            <label htmlFor="codeInput">Please enter a code</label>
+            <label htmlFor="">Please enter a name: </label>
+            <input
+                type="text"
+                id="nameInput"
+                onChange={(event) => handleTextChange(event, setNameInputText)}
+                value={nameInputText}
+            ></input>
+            <label htmlFor="codeInput">Please enter a code: </label>
             <input
                 type="text"
                 id="codeInput"
-                onChange={(event) => handleTextChange(event, setInputText)}
-                value={inputText}
+                onChange={(event) => handleTextChange(event, setCodeInputText)}
+                value={codeInputText}
             />
+            <button type="submit" className="CodeEnter-Button">
+                Submit
+            </button>
         </form>
     );
 }

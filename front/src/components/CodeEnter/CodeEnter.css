@@ -1,6 +1,9 @@
 .CodeEnter {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 20px;
+}
+
+.CodeEnter-Button {
+    grid-column: 1 / -1;
 }
