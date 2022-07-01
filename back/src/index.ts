@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
+import { Room } from "./room";
 
 //Setup
 const app = express();
@@ -17,16 +18,17 @@ const io = new Server(server, {
 //////////////////
 
 io.on("connection", (socket) => {
-    console.log(`user ${socket.handshake.query.name} connected`);
-    socket.on("disconnect", () => {
-        console.log("user disconnected");
-    });
+    console.log(
+        `user ${socket.handshake.query.name} connected to ${socket.handshake.query.code}`
+    );
 
-    socket.on("message", (message) => {
-        console.log(message);
-    });
-
-    socket.emit("message", `Hello ${socket.handshake.query.name}`);
+    Room.registerConnection(
+        {
+            code: socket.handshake.query.code as string,
+            name: socket.handshake.query.name as string,
+        },
+        socket
+    );
 });
 
 ////////////////
