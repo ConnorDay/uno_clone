@@ -47,7 +47,9 @@ class Room {
 
         //Send a sync player signal on player disconnect
         socket.on("disconnect", () => {
-            console.log(`user ${player.name} has disconnected from ${code}`);
+            console.log(
+                `user '${player.name}' has disconnected from '${code}'`
+            );
             targetRoom.removePlayer(player);
             targetRoom.emitAll("playerSync", targetRoom.playerSyncInfo);
         });
@@ -55,7 +57,7 @@ class Room {
         //Change when the player is ready or not
         socket.on("toggleReady", () => {
             player.ready = !player.ready;
-            console.log(`user ${player.name} ready: ${player.ready}`);
+            console.log(`user '${player.name}' ready: '${player.ready}'`);
             targetRoom.emitAll("playerSync", targetRoom.playerSyncInfo);
 
             targetRoom.checkReady();
@@ -90,6 +92,12 @@ class Room {
             return player !== toRemove;
         });
 
+        if (this.players.length === 0) {
+            console.log(`room '${this.code}' has no players, deleting room`);
+            delete Room.allRooms[this.code];
+            return;
+        }
+
         this.checkReady();
     }
 
@@ -102,11 +110,6 @@ class Room {
         this.players.forEach((player) => {
             player.socket.emit(ev, ...args);
         });
-        const id = setTimeout(() => {
-            console.log("hello world");
-        }, 1000);
-
-        clearTimeout(id);
     }
 
     /**
@@ -128,7 +131,7 @@ class Room {
 
             //Start the timer to start the game
             this.timeouts.startRound = setTimeout(() => {
-                console.log(`room ${this.code} has started a round`);
+                console.log(`room '${this.code}' has started a round`);
                 this.emitAll("roundStart");
                 this.inLobby = false;
             }, delay);
