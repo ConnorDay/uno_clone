@@ -51,8 +51,9 @@ class Room {
         });
 
         //Change when the player is ready or not
-        socket.on("setReady", (isReady) => {
-            player.ready = isReady;
+        socket.on("toggleReady", () => {
+            player.ready = !player.ready;
+            targetRoom.emitAll("playerSync", targetRoom.playerSyncInfo);
         });
     }
 

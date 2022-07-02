@@ -59,7 +59,7 @@ function Lobby(props: Props) {
         <div className="lobbyRoot">
             {players.map((player) => {
                 return (
-                    <p id={player.id}>
+                    <p key={player.id}>
                         {player.name} ({player.ready ? "ready" : "not ready"})
                     </p>
                 );
@@ -75,10 +75,10 @@ function Lobby(props: Props) {
 
             <button
                 onClick={() => {
-                    socket.emit("setReady");
+                    socket.emit("toggleReady");
                 }}
             >
-                ready
+                toggle ready
             </button>
         </div>
     );
