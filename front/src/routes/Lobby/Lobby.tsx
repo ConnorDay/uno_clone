@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
+import { JsxElement } from "typescript";
+import { Game } from "../Game/Game";
 import { Homescreen } from "../Homescreen/Homescreen";
 
 type Props = {
@@ -14,14 +16,19 @@ type playerSyncLobbyObject = {
 };
 
 function Lobby(props: Props) {
+    // Prop Objects //
     const { name, code } = props.connectionInfo;
     const { setDisplay } = props;
 
+    // State Objects //
     const [socket, setSocket] = useState<Socket>();
-
     const [players, setPlayers] = useState<playerSyncLobbyObject[]>([]);
+    const [roundStart, setRoundStart] = useState<number>();
+    const [roundDisplayTime, setRoundDisplayTime] = useState<number>();
 
+    //This is only ran once when the page loads for the first time
     useEffect(() => {
+        //Connect to the configured socket address.
         const socket = io(
             `${process.env.REACT_APP_HOST}:${process.env.REACT_APP_PORT}`,
             {
@@ -32,14 +39,53 @@ function Lobby(props: Props) {
             }
         );
 
+        //Update the player list when the playerSync signal is emitted
         socket.on("playerSync", (playerList) => {
-            console.log("playerSync", playerList);
             setPlayers(playerList);
         });
 
+        socket.on("roundTimerStart", (startTime) => {
+            setRoundStart(startTime);
+        });
+
+        socket.on("roundTimerStop", () => {
+            setRoundStart(undefined);
+            setRoundDisplayTime(undefined);
+        });
+
+        socket.on("roundStart", () => {
+            setDisplay(<Game />);
+        });
+
         setSocket(socket);
+
+        //Close the socket when unrendered
+        return () => {
+            socket.close();
+        };
     }, []);
 
+    //If the round timer has started, convert it into the number of seconds remaining until the round starts
+    useEffect(() => {
+        if (roundStart === undefined) {
+            return;
+        }
+
+        const interval = setInterval(() => {
+            let calcTime = roundStart - Date.now();
+            calcTime /= 1000;
+            calcTime = Math.ceil(calcTime);
+            calcTime = Math.max(0, calcTime);
+
+            setRoundDisplayTime(calcTime);
+        }, 100);
+
+        return () => {
+            clearInterval(interval);
+        };
+    }, [roundStart]);
+
+    //Close the socket only if $socket is defined
     const closeSocket = () => {
         if (socket === undefined) {
             return;
@@ -57,6 +103,10 @@ function Lobby(props: Props) {
 
     return (
         <div className="lobbyRoot">
+            {/* Render the time until the round starts */}
+            {roundDisplayTime}
+
+            {/* Map every player in the player list to html p tags */}
             {players.map((player) => {
                 return (
                     <p key={player.id}>
@@ -64,6 +114,8 @@ function Lobby(props: Props) {
                     </p>
                 );
             })}
+
+            {/* Button to disconnect the socket, and go back to the homescreen */}
             <button
                 onClick={() => {
                     closeSocket();
@@ -73,6 +125,7 @@ function Lobby(props: Props) {
                 go back
             </button>
 
+            {/* Button to emit the toggleReady signal */}
             <button
                 onClick={() => {
                     socket.emit("toggleReady");

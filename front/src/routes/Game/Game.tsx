@@ -6,7 +6,7 @@ type Props = {
     socket: Socket;
 };
 
-function Game(props: Props) {
+function Game() {
     return <>this is the game screen</>;
 }
 

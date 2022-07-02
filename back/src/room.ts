@@ -1,4 +1,5 @@
 import { Socket } from "socket.io";
+import { getNodeMajorVersion } from "typescript";
 import { Player } from "./player";
 
 type roomDictionary = {
@@ -34,7 +35,7 @@ class Room {
 
         //Create the room if doesn't exist
         if (Room.allRooms[code] === undefined) {
-            Room.allRooms[code] = new Room();
+            Room.allRooms[code] = new Room(code);
         }
         const targetRoom = Room.allRooms[code];
 
@@ -46,6 +47,7 @@ class Room {
 
         //Send a sync player signal on player disconnect
         socket.on("disconnect", () => {
+            console.log(`user ${player.name} has disconnected from ${code}`);
             targetRoom.removePlayer(player);
             targetRoom.emitAll("playerSync", targetRoom.playerSyncInfo);
         });
@@ -53,21 +55,30 @@ class Room {
         //Change when the player is ready or not
         socket.on("toggleReady", () => {
             player.ready = !player.ready;
+            console.log(`user ${player.name} ready: ${player.ready}`);
             targetRoom.emitAll("playerSync", targetRoom.playerSyncInfo);
+
+            targetRoom.checkReady();
         });
     }
 
     ////////////
     // Public //
     ////////////
+    public code: string;
+
+    constructor(code: string) {
+        this.code = code;
+    }
 
     /**
      * Add a player to the list.
-     * For right now, all this does is push it to the list. This exists for compartmentalization.
      * @param player
      */
     public addPlayer(player: Player) {
         this.players.push(player);
+
+        this.checkReady();
     }
 
     /**
@@ -78,6 +89,8 @@ class Room {
         this.players = this.players.filter((player) => {
             return player !== toRemove;
         });
+
+        this.checkReady();
     }
 
     /**
@@ -89,7 +102,48 @@ class Room {
         this.players.forEach((player) => {
             player.socket.emit(ev, ...args);
         });
+        const id = setTimeout(() => {
+            console.log("hello world");
+        }, 1000);
+
+        clearTimeout(id);
     }
+
+    /**
+     * Checks if all players are ready, and starts a countdown if they are.
+     */
+    public checkReady() {
+        const allReady = this.players.every((player) => player.ready);
+
+        if (allReady) {
+            console.log("All players ready, starting round timer");
+
+            //The time in milliseconds to wait before starting the round
+            const delay = 5 * 1000;
+
+            //The unix timestamp that the round should start
+            const startTime = Date.now() + delay;
+
+            this.emitAll("roundTimerStart", startTime);
+
+            //Start the timer to start the game
+            this.timeouts.startRound = setTimeout(() => {
+                console.log(`room ${this.code} has started a round`);
+                this.emitAll("roundStart");
+                this.inLobby = false;
+            }, delay);
+        } else if (this.timeouts.startRound !== undefined) {
+            //If the roundStartTimer has already been started, cancel it
+
+            console.log("A player has become unready, stopping round timer");
+
+            clearTimeout(this.timeouts.startRound);
+            this.timeouts.startRound = undefined;
+            this.emitAll("roundTimerStop");
+        }
+    }
+
+    // Getters //
 
     /**
      * A generic method to get a list of player sync information.
@@ -109,6 +163,9 @@ class Room {
 
     private players: Player[] = [];
     private inLobby = true;
+    private timeouts: { [key: string]: NodeJS.Timeout | undefined } = {
+        startRound: undefined,
+    };
 
     /**
      * Get the sync information for when the room is specifically in the lobby state
