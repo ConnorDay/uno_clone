@@ -57,7 +57,7 @@ function CodeEnter(props: Props) {
                 )
             }
         >
-            <label htmlFor="">Please enter a name: </label>
+            <label htmlFor="nameInput">Please enter a name: </label>
             <input
                 type="text"
                 id="nameInput"

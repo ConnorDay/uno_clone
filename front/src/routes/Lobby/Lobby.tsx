@@ -7,13 +7,19 @@ type Props = {
     setDisplay: React.Dispatch<React.SetStateAction<JSX.Element>>;
 };
 
+type playerSyncLobbyObject = {
+    name: string;
+    id: string;
+    ready: boolean;
+};
+
 function Lobby(props: Props) {
     const { name, code } = props.connectionInfo;
     const { setDisplay } = props;
 
     const [socket, setSocket] = useState<Socket>();
 
-    const [players, setPlayers] = useState<string[]>([]);
+    const [players, setPlayers] = useState<playerSyncLobbyObject[]>([]);
 
     useEffect(() => {
         const socket = io(
@@ -49,12 +55,14 @@ function Lobby(props: Props) {
         return <>Connecting...</>;
     }
 
-    let counter = 0;
-
     return (
         <div className="lobbyRoot">
             {players.map((player) => {
-                return <p id={`player_${counter++}`}>{player}</p>;
+                return (
+                    <p id={player.id}>
+                        {player.name} ({player.ready ? "ready" : "not ready"})
+                    </p>
+                );
             })}
             <button
                 onClick={() => {
@@ -63,6 +71,14 @@ function Lobby(props: Props) {
                 }}
             >
                 go back
+            </button>
+
+            <button
+                onClick={() => {
+                    socket.emit("setReady");
+                }}
+            >
+                ready
             </button>
         </div>
     );
