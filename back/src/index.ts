@@ -3,6 +3,7 @@ import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
 import { Room } from "./room";
+import { Lobby } from "./lobby";
 
 //Setup
 const app = express();
@@ -18,16 +19,15 @@ const io = new Server(server, {
 //////////////////
 
 io.on("connection", (socket) => {
-    console.log(
-        `user ${socket.handshake.query.name} connected to ${socket.handshake.query.code}`
-    );
-
     Room.registerConnection(
         {
             code: socket.handshake.query.code as string,
             name: socket.handshake.query.name as string,
         },
-        socket
+        socket,
+        (code) => {
+            return new Lobby(code);
+        }
     );
 });
 
