@@ -9,37 +9,37 @@ type playerSyncConnectingObject = {
 };
 
 class Uno extends Room {
-    private playersConnected: { [key: string]: boolean } = {};
+    private playersConnected: string[] = [];
     private connecting = true;
 
     constructor(code: string, playerList: Player[]) {
         super(code);
 
+        this.listenerEvents.push("gameLoaded");
+
         // Wait for each player to connect
         playerList.forEach((player) => {
             this.addPlayer(player, false);
 
-            this.playersConnected[player.id] = false;
-
             player.socket.on("gameLoaded", () => {
+                //Make sure we haven't already marked this player as connected
+                if (this.playersConnected.includes(player.id)) {
+                    console.log(
+                        `user '${player.name}' attempted to connect, but was already connected`
+                    );
+                    return;
+                }
+
                 console.log(
                     `user '${player.name}' in '${this.code}' has connected to the game`
                 );
 
-                this.playersConnected[player.id] = true;
+                this.playersConnected.push(player.id);
 
                 this.sync();
 
-                //check if any player hasn't connected
-                let ready = true;
-                for (let id in this.playersConnected) {
-                    if (!this.playersConnected[id]) {
-                        ready = false;
-                        break;
-                    }
-                }
-
-                if (ready) {
+                //check if all players have connected
+                if (this.players.length === this.playersConnected.length) {
                     this.start();
                 }
             });
@@ -55,7 +55,7 @@ class Uno extends Room {
                 toSend.push({
                     name: player.name,
                     id: player.id,
-                    connected: this.playersConnected[player.id],
+                    connected: this.playersConnected.includes(player.id),
                 });
             });
             this.emitAll("playerSync", toSend);
@@ -66,6 +66,16 @@ class Uno extends Room {
     private start() {
         this.connecting = false;
         console.log(`game started for '${this.code}'`);
+
+        //remove loaded listener for all players
+        this.players.forEach((player) => {
+            player.socket.removeAllListeners("gameLoaded");
+        });
+
+        //Remove gameLoaded event from listenerEvents
+        this.listenerEvents = this.listenerEvents.filter(
+            (event) => event !== "gameLoaded"
+        );
     }
 }
 

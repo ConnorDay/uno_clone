@@ -105,6 +105,7 @@ abstract class Room {
     ///////////////
 
     protected players: Player[] = [];
+    protected listenerEvents: string[] = ["disconnect"];
 
     /**
      * Emit the same message to all connected players
@@ -117,12 +118,8 @@ abstract class Room {
         });
     }
 
-    protected removeListeners(additional?: string[]) {
-        let toRemove = ["disconnect"];
-        if (additional !== undefined) {
-            toRemove = toRemove.concat(additional);
-        }
-        toRemove.forEach((event) => {
+    private removeListeners() {
+        this.listenerEvents.forEach((event) => {
             this.players.forEach((player) => {
                 player.socket.removeAllListeners(event);
             });
