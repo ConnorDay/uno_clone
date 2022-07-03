@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
-import { JsxElement } from "typescript";
+import { ConnectionInfo, Global } from "../../Global";
 import { Game } from "../Game/Game";
 import { Homescreen } from "../Homescreen/Homescreen";
-
-type Props = {
-    connectionInfo: { name: string; code: string };
-    setDisplay: React.Dispatch<React.SetStateAction<JSX.Element>>;
-};
 
 type playerSyncLobbyObject = {
     name: string;
@@ -15,10 +10,9 @@ type playerSyncLobbyObject = {
     ready: boolean;
 };
 
-function Lobby(props: Props) {
-    // Prop Objects //
-    const { name, code } = props.connectionInfo;
-    const { setDisplay } = props;
+function Lobby() {
+    const { connectionInfo, setDisplay } = Global;
+    const { name, code } = connectionInfo;
 
     // State Objects //
     const [socket, setSocket] = useState<Socket>();
@@ -119,7 +113,7 @@ function Lobby(props: Props) {
             <button
                 onClick={() => {
                     closeSocket();
-                    setDisplay(<Homescreen setDisplay={setDisplay} />);
+                    setDisplay(<Homescreen />);
                 }}
             >
                 go back
