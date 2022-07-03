@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
-import { JsxElement } from "typescript";
+import { ConnectionInfo, Global } from "../../Global";
 import { Game } from "../Game/Game";
 import { Homescreen } from "../Homescreen/Homescreen";
-
-type Props = {
-    connectionInfo: { name: string; code: string };
-    setDisplay: React.Dispatch<React.SetStateAction<JSX.Element>>;
-};
 
 type playerSyncLobbyObject = {
     name: string;
@@ -15,30 +10,17 @@ type playerSyncLobbyObject = {
     ready: boolean;
 };
 
-function Lobby(props: Props) {
-    // Prop Objects //
-    const { name, code } = props.connectionInfo;
-    const { setDisplay } = props;
+function Lobby() {
+    const { socket, connectionInfo, setDisplay } = Global;
+    const { name, code } = connectionInfo;
 
     // State Objects //
-    const [socket, setSocket] = useState<Socket>();
     const [players, setPlayers] = useState<playerSyncLobbyObject[]>([]);
     const [roundStart, setRoundStart] = useState<number>();
     const [roundDisplayTime, setRoundDisplayTime] = useState<number>();
 
     //This is only ran once when the page loads for the first time
     useEffect(() => {
-        //Connect to the configured socket address.
-        const socket = io(
-            `${process.env.REACT_APP_HOST}:${process.env.REACT_APP_PORT}`,
-            {
-                query: {
-                    name,
-                    code,
-                },
-            }
-        );
-
         //Update the player list when the playerSync signal is emitted
         socket.on("playerSync", (playerList) => {
             setPlayers(playerList);
@@ -57,11 +39,12 @@ function Lobby(props: Props) {
             setDisplay(<Game />);
         });
 
-        setSocket(socket);
-
         //Close the socket when unrendered
         return () => {
-            socket.close();
+            socket.removeListener("playerSync");
+            socket.removeListener("roundTimerStart");
+            socket.removeListener("roundTimerStop");
+            socket.removeListener("roundStart");
         };
     }, []);
 
@@ -85,22 +68,6 @@ function Lobby(props: Props) {
         };
     }, [roundStart]);
 
-    //Close the socket only if $socket is defined
-    const closeSocket = () => {
-        if (socket === undefined) {
-            return;
-        }
-
-        socket.close();
-        setSocket(undefined);
-    };
-
-    //Return a connecting screen until the socket is set
-    //TODO: add a time out to this screen
-    if (socket === undefined) {
-        return <>Connecting...</>;
-    }
-
     return (
         <div className="lobbyRoot">
             {/* Render the time until the round starts */}
@@ -118,8 +85,8 @@ function Lobby(props: Props) {
             {/* Button to disconnect the socket, and go back to the homescreen */}
             <button
                 onClick={() => {
-                    closeSocket();
-                    setDisplay(<Homescreen setDisplay={setDisplay} />);
+                    Global.socket.close();
+                    setDisplay(<Homescreen />);
                 }}
             >
                 go back

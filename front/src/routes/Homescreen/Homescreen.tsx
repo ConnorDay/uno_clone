@@ -1,29 +1,25 @@
+import { io } from "socket.io-client";
 import { Lobby } from "..";
 import { CodeEnter } from "../../components";
+import { Global } from "../../Global";
 import "./Homescreen.css";
 
-type Props = {
-    setDisplay: React.Dispatch<React.SetStateAction<JSX.Element>>;
-};
-
-function changeDisplay(
-    setDisplay: React.Dispatch<React.SetStateAction<JSX.Element>>,
-    code: string,
-    name: string
-) {
-    setDisplay(
-        <Lobby connectionInfo={{ code, name }} setDisplay={setDisplay} />
-    );
-}
-
-function Homescreen(props: Props) {
-    const { setDisplay } = props;
-
+function Homescreen() {
     return (
         <div className="homescreen">
             <CodeEnter
                 onSubmit={(code: string, name: string) => {
-                    changeDisplay(setDisplay, code, name);
+                    Global.connectionInfo = { code, name };
+                    Global.socket = io(
+                        `${process.env.REACT_APP_HOST}:${process.env.REACT_APP_PORT}`,
+                        {
+                            query: {
+                                name,
+                                code,
+                            },
+                        }
+                    );
+                    Global.setDisplay(<Lobby />);
                 }}
             />
         </div>
