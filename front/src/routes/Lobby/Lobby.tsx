@@ -11,28 +11,16 @@ type playerSyncLobbyObject = {
 };
 
 function Lobby() {
-    const { connectionInfo, setDisplay } = Global;
+    const { socket, connectionInfo, setDisplay } = Global;
     const { name, code } = connectionInfo;
 
     // State Objects //
-    const [socket, setSocket] = useState<Socket>();
     const [players, setPlayers] = useState<playerSyncLobbyObject[]>([]);
     const [roundStart, setRoundStart] = useState<number>();
     const [roundDisplayTime, setRoundDisplayTime] = useState<number>();
 
     //This is only ran once when the page loads for the first time
     useEffect(() => {
-        //Connect to the configured socket address.
-        const socket = io(
-            `${process.env.REACT_APP_HOST}:${process.env.REACT_APP_PORT}`,
-            {
-                query: {
-                    name,
-                    code,
-                },
-            }
-        );
-
         //Update the player list when the playerSync signal is emitted
         socket.on("playerSync", (playerList) => {
             setPlayers(playerList);
@@ -51,11 +39,12 @@ function Lobby() {
             setDisplay(<Game />);
         });
 
-        setSocket(socket);
-
         //Close the socket when unrendered
         return () => {
-            socket.close();
+            socket.removeListener("playerSync");
+            socket.removeListener("roundTimerStart");
+            socket.removeListener("roundTimerStop");
+            socket.removeListener("roundStart");
         };
     }, []);
 
@@ -79,22 +68,6 @@ function Lobby() {
         };
     }, [roundStart]);
 
-    //Close the socket only if $socket is defined
-    const closeSocket = () => {
-        if (socket === undefined) {
-            return;
-        }
-
-        socket.close();
-        setSocket(undefined);
-    };
-
-    //Return a connecting screen until the socket is set
-    //TODO: add a time out to this screen
-    if (socket === undefined) {
-        return <>Connecting...</>;
-    }
-
     return (
         <div className="lobbyRoot">
             {/* Render the time until the round starts */}
@@ -112,7 +85,7 @@ function Lobby() {
             {/* Button to disconnect the socket, and go back to the homescreen */}
             <button
                 onClick={() => {
-                    closeSocket();
+                    Global.socket.close();
                     setDisplay(<Homescreen />);
                 }}
             >

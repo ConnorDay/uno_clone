@@ -119,7 +119,9 @@ class Room {
         const allReady = this.players.every((player) => player.ready);
 
         if (allReady) {
-            console.log("All players ready, starting round timer");
+            console.log(
+                `All players ready in room '${this.code}', starting round timer`
+            );
 
             //The time in milliseconds to wait before starting the round
             const delay = 5 * 1000;
