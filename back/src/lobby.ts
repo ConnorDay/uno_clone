@@ -1,6 +1,6 @@
-import { Socket } from "socket.io";
+import { Uno } from "./game";
 import { Player } from "./player";
-import { connectionInfo, Room } from "./room";
+import { Room } from "./room";
 
 type playerSyncLobbyObject = {
     name: string;
@@ -64,8 +64,7 @@ class Lobby extends Room {
             //Start the timer to start the game
             this.timeouts.startRound = setTimeout(() => {
                 console.log(`room '${this.code}' has started a round`);
-                this.emitAll("roundStart");
-                this.inLobby = false;
+                Room.allRooms[this.code] = new Uno(this.code, this.players);
             }, delay);
         } else if (this.timeouts.startRound !== undefined) {
             //If the roundStartTimer has already been started, cancel it
@@ -78,7 +77,6 @@ class Lobby extends Room {
         }
     }
 
-    private inLobby = true;
     private timeouts: { [key: string]: NodeJS.Timeout | undefined } = {
         startRound: undefined,
     };

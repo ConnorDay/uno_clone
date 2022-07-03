@@ -1,6 +1,4 @@
 import { Socket } from "socket.io";
-import { getNodeMajorVersion } from "typescript";
-import { Lobby } from "./lobby";
 import { Player } from "./player";
 
 export type roomDictionary = {
@@ -60,8 +58,9 @@ abstract class Room {
     /**
      * Add a player to the list.
      * @param player
+     * @param sync If the room should attempt to sync after adding the player
      */
-    public addPlayer(player: Player) {
+    public addPlayer(player: Player, sync: boolean = true) {
         this.players.push(player);
 
         //Send a sync player signal on player disconnect
@@ -73,7 +72,9 @@ abstract class Room {
             this.sync();
         });
 
-        this.sync();
+        if (sync) {
+            this.sync();
+        }
     }
 
     /**
@@ -112,6 +113,8 @@ abstract class Room {
             player.socket.emit(ev, ...args);
         });
     }
+
+    protected removeListeners() {}
 }
 
 export { Room };
