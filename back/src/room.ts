@@ -80,8 +80,9 @@ abstract class Room {
     /**
      * Removes a player from the list by selectively filtering them out
      * @param toRemove The player to remove
+     * @param sync If the room should sync after removing the player
      */
-    public removePlayer(toRemove: Player) {
+    public removePlayer(toRemove: Player, sync: boolean = true) {
         this.players = this.players.filter((player) => {
             return player !== toRemove;
         });
@@ -92,7 +93,9 @@ abstract class Room {
             return;
         }
 
-        this.sync();
+        if (sync) {
+            this.sync();
+        }
     }
 
     public abstract sync(): void;
@@ -114,7 +117,17 @@ abstract class Room {
         });
     }
 
-    protected removeListeners() {}
+    protected removeListeners(additional?: string[]) {
+        let toRemove = ["disconnect"];
+        if (additional !== undefined) {
+            toRemove = toRemove.concat(additional);
+        }
+        toRemove.forEach((event) => {
+            this.players.forEach((player) => {
+                player.socket.removeAllListeners(event);
+            });
+        });
+    }
 }
 
 export { Room };

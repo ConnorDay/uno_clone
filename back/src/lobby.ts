@@ -80,6 +80,14 @@ class Lobby extends Room {
     private timeouts: { [key: string]: NodeJS.Timeout | undefined } = {
         startRound: undefined,
     };
+
+    protected removeListeners(additional?: string[]): void {
+        let toRemove = ["toggleReady"];
+        if (additional !== undefined) {
+            toRemove = toRemove.concat(additional);
+        }
+        super.removeListeners(toRemove);
+    }
 }
 
 export { Lobby };
