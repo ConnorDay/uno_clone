@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
+import { PlayerList } from "../../components";
 import { ConnectionInfo, Global } from "../../Global";
 import { Game } from "../Game/Game";
 import { Homescreen } from "../Homescreen/Homescreen";
@@ -74,13 +75,16 @@ function Lobby() {
             {roundDisplayTime}
 
             {/* Map every player in the player list to html p tags */}
-            {players.map((player) => {
-                return (
-                    <p key={player.id}>
-                        {player.name} ({player.ready ? "ready" : "not ready"})
-                    </p>
-                );
-            })}
+            <PlayerList
+                players={players}
+                additional={(p) => {
+                    let player = p as playerSyncLobbyObject;
+                    if (player.ready) {
+                        return <>(ready)</>;
+                    }
+                    return <>(not ready)</>;
+                }}
+            />
 
             {/* Button to disconnect the socket, and go back to the homescreen */}
             <button
