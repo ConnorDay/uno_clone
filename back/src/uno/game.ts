@@ -9,9 +9,22 @@ type playerSyncConnectingObject = {
     connected: boolean;
 };
 
+type playerSyncObject = {
+    name: string;
+    id: string;
+    numCards: number;
+};
+
+type gameSyncObject = {
+    turn: number;
+    players: playerSyncObject[];
+};
+
 export class Game extends Room {
     private playersConnected: string[] = [];
     private connecting = true;
+
+    private _turn: number = 0;
 
     constructor(code: string, playerList: Player[]) {
         super(code);
@@ -25,7 +38,7 @@ export class Game extends Room {
             player.socket.on("gameLoaded", () => {
                 //Make sure we haven't already marked this player as connected
                 if (this.playersConnected.includes(player.id)) {
-                    console.log(
+                    console.warn(
                         `user '${player.name}' attempted to connect, but was already connected`
                     );
                     return;
@@ -50,6 +63,7 @@ export class Game extends Room {
     }
 
     public sync() {
+        //sync for when players are connecting
         if (this.connecting) {
             const toSend: playerSyncConnectingObject[] = [];
             this.players.forEach((player) => {
@@ -62,6 +76,29 @@ export class Game extends Room {
             this.emitAll("playerSync", toSend);
             return;
         }
+
+        const playerSync: playerSyncObject[] = [];
+        this.players.forEach((player) => {
+            playerSync.push({
+                name: player.name,
+                id: player.id,
+                numCards: 7, //Hardcoded until drawing is added
+            });
+        });
+
+        const toSend: gameSyncObject = {
+            turn: this.turn,
+            players: playerSync,
+        };
+
+        this.emitAll("gameSync", toSend);
+    }
+
+    public set turn(num: number) {
+        this._turn = num % this.players.length;
+    }
+    public get turn(): number {
+        return this._turn;
     }
 
     private start() {
@@ -78,7 +115,11 @@ export class Game extends Room {
             (event) => event !== "gameLoaded"
         );
 
+        //Create the deck
         const deck: Deck = new Deck();
         deck.shuffle();
+
+        //Select a starting player
+        this.turn = Math.floor(Math.random() * this.players.length);
     }
 }
