@@ -3,7 +3,9 @@ import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
 import { Room } from "./room";
-import { Lobby } from "./lobby";
+import { Lobby } from "./uno";
+
+///<reference path="uno/uno.ts" />
 
 //Setup
 const app = express();

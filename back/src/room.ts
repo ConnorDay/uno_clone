@@ -1,6 +1,4 @@
 import { Socket } from "socket.io";
-import { getNodeMajorVersion } from "typescript";
-import { Lobby } from "./lobby";
 import { Player } from "./player";
 
 export type roomDictionary = {
@@ -60,8 +58,9 @@ abstract class Room {
     /**
      * Add a player to the list.
      * @param player
+     * @param sync If the room should attempt to sync after adding the player
      */
-    public addPlayer(player: Player) {
+    public addPlayer(player: Player, sync: boolean = true) {
         this.players.push(player);
 
         //Send a sync player signal on player disconnect
@@ -73,14 +72,17 @@ abstract class Room {
             this.sync();
         });
 
-        this.sync();
+        if (sync) {
+            this.sync();
+        }
     }
 
     /**
      * Removes a player from the list by selectively filtering them out
      * @param toRemove The player to remove
+     * @param sync If the room should sync after removing the player
      */
-    public removePlayer(toRemove: Player) {
+    public removePlayer(toRemove: Player, sync: boolean = true) {
         this.players = this.players.filter((player) => {
             return player !== toRemove;
         });
@@ -91,7 +93,9 @@ abstract class Room {
             return;
         }
 
-        this.sync();
+        if (sync) {
+            this.sync();
+        }
     }
 
     public abstract sync(): void;
@@ -101,6 +105,7 @@ abstract class Room {
     ///////////////
 
     protected players: Player[] = [];
+    protected listenerEvents: string[] = ["disconnect"];
 
     /**
      * Emit the same message to all connected players
@@ -110,6 +115,14 @@ abstract class Room {
     protected emitAll(ev: string, ...args: any[]) {
         this.players.forEach((player) => {
             player.socket.emit(ev, ...args);
+        });
+    }
+
+    protected removeListeners() {
+        this.listenerEvents.forEach((event) => {
+            this.players.forEach((player) => {
+                player.socket.removeAllListeners(event);
+            });
         });
     }
 }
