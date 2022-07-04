@@ -134,5 +134,7 @@ export class Game extends Room {
 
         //Select a starting player
         this.turn = Math.floor(Math.random() * this.players.length);
+
+        this.sync();
     }
 }
