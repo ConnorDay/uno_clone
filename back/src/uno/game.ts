@@ -1,6 +1,7 @@
-import { Lobby } from "./lobby";
-import { Player } from "./player";
-import { Room } from "./room";
+//import { Lobby } from "./lobby";
+import { Player } from "../player";
+import { Room } from "../room";
+import { Deck } from "./deck";
 
 type playerSyncConnectingObject = {
     name: string;
@@ -8,7 +9,7 @@ type playerSyncConnectingObject = {
     connected: boolean;
 };
 
-class Uno extends Room {
+export class Game extends Room {
     private playersConnected: string[] = [];
     private connecting = true;
 
@@ -76,7 +77,8 @@ class Uno extends Room {
         this.listenerEvents = this.listenerEvents.filter(
             (event) => event !== "gameLoaded"
         );
+
+        const deck: Deck = new Deck();
+        deck.shuffle();
     }
 }
-
-export { Uno };

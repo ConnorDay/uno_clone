@@ -1,6 +1,7 @@
-import { Uno } from "./game";
-import { Player } from "./player";
-import { Room } from "./room";
+//import { Uno.Game } from "./game";
+import { Player } from "../player";
+import { Room } from "../room";
+import { Game } from "./game";
 
 type playerSyncLobbyObject = {
     name: string;
@@ -8,7 +9,7 @@ type playerSyncLobbyObject = {
     ready: boolean;
 };
 
-class Lobby extends Room {
+export class Lobby extends Room {
     constructor(code: string) {
         super(code);
         this.listenerEvents.push("toggleReady");
@@ -65,7 +66,7 @@ class Lobby extends Room {
             //Start the timer to start the game
             this.timeouts.startRound = setTimeout(() => {
                 console.log(`room '${this.code}' has started a round`);
-                Room.allRooms[this.code] = new Uno(this.code, this.players);
+                Room.allRooms[this.code] = new Game(this.code, this.players);
             }, delay);
         } else if (this.timeouts.startRound !== undefined) {
             //If the roundStartTimer has already been started, cancel it
@@ -82,5 +83,3 @@ class Lobby extends Room {
         startRound: undefined,
     };
 }
-
-export { Lobby };
