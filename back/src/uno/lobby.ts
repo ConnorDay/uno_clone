@@ -66,6 +66,7 @@ export class Lobby extends Room {
             //Start the timer to start the game
             this.timeouts.startRound = setTimeout(() => {
                 console.log(`room '${this.code}' has started a round`);
+                this.removeListeners();
                 Room.allRooms[this.code] = new Game(this.code, this.players);
             }, delay);
         } else if (this.timeouts.startRound !== undefined) {

@@ -118,7 +118,7 @@ abstract class Room {
         });
     }
 
-    private removeListeners() {
+    protected removeListeners() {
         this.listenerEvents.forEach((event) => {
             this.players.forEach((player) => {
                 player.socket.removeAllListeners(event);

@@ -94,6 +94,19 @@ export class Game extends Room {
         this.emitAll("gameSync", toSend);
     }
 
+    public removePlayer(toRemove: Player, sync: boolean = true): void {
+        super.removePlayer(toRemove, false);
+
+        //Make sure that the turn is still valid
+        if (!this.connecting) {
+            this.turn = this.turn;
+        }
+
+        if (sync) {
+            this.sync();
+        }
+    }
+
     public set turn(num: number) {
         this._turn = num % this.players.length;
     }
