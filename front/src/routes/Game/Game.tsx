@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PlayerList } from "../../components";
+import { Hand, PlayerList } from "../../components";
 import { Global } from "../../Global";
 
 type playerSyncConnectingObject = {
@@ -24,6 +24,7 @@ function Game() {
 
     //state objects
     const [players, setPlayers] = useState(<PlayerList players={[]} />);
+    const [hand, setHand] = useState(<Hand cards={[]} />);
 
     //Setup the socket
     useEffect(() => {
@@ -42,6 +43,7 @@ function Game() {
             );
         });
 
+        //Sync event for once the game has started
         socket.on("gameSync", (syncObject: gameSyncObject) => {
             const currPlayerId = syncObject.players[syncObject.turn].id;
             setPlayers(
@@ -61,10 +63,25 @@ function Game() {
             );
         });
 
+        socket.on("handSync", (obj) => {
+            setHand(<Hand cards={obj} />);
+        });
+
+        //Emitted once the game has started
+        socket.on("gameStart", () => {
+            //Request hand information
+            socket.emit("getHand");
+        });
+
         socket.emit("gameLoaded");
     }, []);
 
-    return <div>{players}</div>;
+    return (
+        <div>
+            {players}
+            {hand}
+        </div>
+    );
 }
 
 export { Game };

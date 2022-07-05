@@ -160,6 +160,9 @@ export class Game extends Room {
         this.players.forEach((player) => {
             this.hands[player.id] = [];
             this.giveCards(player.id, 7);
+
+            player.socket.emit("handSync", this.hands[player.id]);
+
             console.log(player.name, this.hands[player.id]);
         });
 
@@ -167,5 +170,7 @@ export class Game extends Room {
         this.turn = Math.floor(Math.random() * this.players.length);
 
         this.sync();
+
+        this.emitAll("gameStart");
     }
 }
