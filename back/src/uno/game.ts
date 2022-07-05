@@ -1,7 +1,9 @@
-//import { Lobby } from "./lobby";
+import { textChangeRangeIsUnchanged } from "typescript";
 import { Player } from "../player";
 import { Room } from "../room";
+import { Card } from "./cards/card";
 import { Deck } from "./deck";
+import { UnoDeck } from "./uno_deck";
 
 type playerSyncConnectingObject = {
     name: string;
@@ -23,6 +25,11 @@ type gameSyncObject = {
 export class Game extends Room {
     private playersConnected: string[] = [];
     private connecting = true;
+
+    private hands: { [key: string]: Card[] } = {};
+
+    private deck: UnoDeck = new UnoDeck();
+    private discard: Deck = new Deck();
 
     private _turn: number = 0;
 
@@ -59,6 +66,8 @@ export class Game extends Room {
             });
         });
 
+        this.deck.shuffle();
+
         this.emitAll("roundStart");
     }
 
@@ -82,7 +91,7 @@ export class Game extends Room {
             playerSync.push({
                 name: player.name,
                 id: player.id,
-                numCards: 7, //Hardcoded until drawing is added
+                numCards: this.hands[player.id].length,
             });
         });
 
@@ -114,6 +123,25 @@ export class Game extends Room {
         return this._turn;
     }
 
+    private giveCards(playerId: string, numCards: number) {
+        for (let i = 0; i < numCards; i++) {
+            let toDraw = this.deck.draw();
+
+            //Attempt to shuffle the discard back into the deck
+            if (toDraw === undefined) {
+                this.deck.mergeDecks(this.discard);
+                toDraw = this.deck.draw();
+
+                //No more available cards, just don't do anything
+                if (toDraw === undefined) {
+                    return;
+                }
+            }
+
+            this.hands[playerId].push(toDraw);
+        }
+    }
+
     private start() {
         this.connecting = false;
         console.log(`game started for '${this.code}'`);
@@ -128,13 +156,21 @@ export class Game extends Room {
             (event) => event !== "gameLoaded"
         );
 
-        //Create the deck
-        const deck: Deck = new Deck();
-        deck.shuffle();
+        //Deal 7 cards to each player
+        this.players.forEach((player) => {
+            this.hands[player.id] = [];
+            this.giveCards(player.id, 7);
+
+            player.socket.emit("handSync", this.hands[player.id]);
+
+            console.log(player.name, this.hands[player.id]);
+        });
 
         //Select a starting player
         this.turn = Math.floor(Math.random() * this.players.length);
 
         this.sync();
+
+        this.emitAll("gameStart");
     }
 }

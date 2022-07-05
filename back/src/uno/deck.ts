@@ -1,11 +1,8 @@
-import { Card, Color } from "./cards/card";
+import { Card } from "./cards/card";
 
 export class Deck {
     protected cards: Card[] = [];
-    constructor() {
-        this.addNumberCards();
-        this.addSpecialCards();
-    }
+    constructor() {}
 
     public shuffle() {
         const shuffled: Card[] = [];
@@ -18,30 +15,24 @@ export class Deck {
         this.cards = shuffled;
     }
 
-    protected addNumberCards() {
-        let colors: Color[] = ["red", "yellow", "green", "blue"];
-        colors.forEach((color) => {
-            this.cards.push(new Card(color, "0"));
-
-            for (let i = 1; i < 10; i++) {
-                this.cards.push(new Card(color, `${i}`));
-                this.cards.push(new Card(color, `${i}`));
-            }
-        });
+    public draw(): Card | undefined {
+        return this.cards.pop();
     }
 
-    protected addSpecialCards() {
-        let colors: Color[] = ["red", "yellow", "green", "blue"];
-        colors.forEach((color) => {
-            ["+2", "skip", "reverse"].forEach((value) => {
-                this.cards.push(new Card(color, value));
-                this.cards.push(new Card(color, value));
-            });
-        });
+    public get length(): number {
+        return this.cards.length;
+    }
 
-        for (let i = 0; i < 4; i++) {
-            this.cards.push(new Card("special", "+4"));
-            this.cards.push(new Card("special", "wild"));
+    public addCard(card: Card) {
+        this.cards.push(card);
+    }
+
+    public mergeDecks(deck: Deck) {
+        while (deck.length > 0) {
+            const drawnCard = deck.draw();
+            if (drawnCard !== undefined) {
+                this.addCard(drawnCard);
+            }
         }
     }
 }
