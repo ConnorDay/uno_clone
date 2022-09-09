@@ -17,6 +17,14 @@ type playerSyncObject = {
 type gameSyncObject = {
     turn: number;
     players: playerSyncObject[];
+    topCard: Card;
+};
+
+type Color = "red" | "blue" | "green" | "yellow" | "special";
+type Card = {
+    color: Color;
+    value: string;
+    id: string;
 };
 
 function Game() {
@@ -25,6 +33,7 @@ function Game() {
     //state objects
     const [players, setPlayers] = useState(<PlayerList players={[]} />);
     const [hand, setHand] = useState(<Hand cards={[]} />);
+    const [topCard, setTopCard] = useState<Card>();
 
     //Setup the socket
     useEffect(() => {
@@ -61,6 +70,7 @@ function Game() {
                     }}
                 />
             );
+            setTopCard(syncObject.topCard);
         });
 
         socket.on("handSync", (obj) => {
@@ -80,6 +90,10 @@ function Game() {
         <div>
             {players}
             {hand}
+            <div>
+                {topCard?.color}
+                {topCard?.value}
+            </div>
         </div>
     );
 }

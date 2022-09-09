@@ -1,6 +1,10 @@
 import { randomUUID } from "crypto";
 
 export type Color = "red" | "blue" | "green" | "yellow" | "special";
+export type Query = {
+    prompt: string;
+    options: string[];
+};
 
 export class Card {
     public color: Color;
