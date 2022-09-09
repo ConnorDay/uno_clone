@@ -171,6 +171,14 @@ export class Game extends Room {
         this.listenerEvents.push("playRequest");
         this.players.forEach((player) => {
             player.socket.on("playRequest", (id: string) => {
+                if (player.id !== this.players[this.turn].id) {
+                    const response: playResponse = {
+                        success: false,
+                    };
+                    player.socket.emit("playResponse", response);
+                    return;
+                }
+
                 const card = this.hands[player.id].find((card) => {
                     return card.id === id;
                 });
@@ -195,7 +203,22 @@ export class Game extends Room {
                 const response: playResponse = {
                     success: true,
                 };
+
+                this.turn++;
+
+                //Remove card from the player's hand
+                this.hands[player.id] = this.hands[player.id].filter(
+                    (hCard) => {
+                        return hCard.id !== id;
+                    }
+                );
+                player.socket.emit("handSync", this.hands[player.id]);
+
+                this.discard.addCard(this.topCard);
+                this.topCard = card;
                 player.socket.emit("playResponse", response);
+
+                this.sync();
             });
         });
 
