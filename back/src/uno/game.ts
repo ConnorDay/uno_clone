@@ -20,6 +20,7 @@ type playerSyncObject = {
 type gameSyncObject = {
     turn: number;
     players: playerSyncObject[];
+    topCard: Card;
 };
 
 export class Game extends Room {
@@ -30,6 +31,8 @@ export class Game extends Room {
 
     private deck: UnoDeck = new UnoDeck();
     private discard: Deck = new Deck();
+
+    private topCard: Card;
 
     private _turn: number = 0;
 
@@ -68,6 +71,9 @@ export class Game extends Room {
 
         this.deck.shuffle();
 
+        //This is guaranteed to not be undefined because the deck was just made
+        this.topCard = this.deck.draw()!;
+
         this.emitAll("roundStart");
     }
 
@@ -98,6 +104,7 @@ export class Game extends Room {
         const toSend: gameSyncObject = {
             turn: this.turn,
             players: playerSync,
+            topCard: this.topCard,
         };
 
         this.emitAll("gameSync", toSend);
@@ -162,8 +169,6 @@ export class Game extends Room {
             this.giveCards(player.id, 7);
 
             player.socket.emit("handSync", this.hands[player.id]);
-
-            console.log(player.name, this.hands[player.id]);
         });
 
         //Select a starting player
