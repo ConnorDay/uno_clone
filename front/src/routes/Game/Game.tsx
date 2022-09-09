@@ -37,6 +37,7 @@ function Game() {
 
     //Setup the socket
     useEffect(() => {
+        //Sync event for before the game has started
         socket.on("playerSync", (syncObject: playerSyncConnectingObject[]) => {
             setPlayers(
                 <PlayerList
@@ -73,15 +74,18 @@ function Game() {
             setTopCard(syncObject.topCard);
         });
 
+        //Sync event to update hand
         socket.on("handSync", (obj) => {
             setHand(<Hand cards={obj} />);
         });
 
-        //Emitted once the game has started
-        socket.on("gameStart", () => {
-            //Request hand information
-            socket.emit("getHand");
+        //Response to play Request
+        socket.on("playResponse", (obj) => {
+            console.log(obj.success);
         });
+
+        //Emitted once the game has started
+        socket.on("gameStart", () => {});
 
         socket.emit("gameLoaded");
     }, []);

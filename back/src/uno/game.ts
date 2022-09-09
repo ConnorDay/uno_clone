@@ -23,6 +23,10 @@ type gameSyncObject = {
     topCard: Card;
 };
 
+type playResponse = {
+    success: boolean;
+};
+
 export class Game extends Room {
     private playersConnected: string[] = [];
     private connecting = true;
@@ -162,6 +166,38 @@ export class Game extends Room {
         this.listenerEvents = this.listenerEvents.filter(
             (event) => event !== "gameLoaded"
         );
+
+        //Setup new listeners
+        this.listenerEvents.push("playRequest");
+        this.players.forEach((player) => {
+            player.socket.on("playRequest", (id: string) => {
+                const card = this.hands[player.id].find((card) => {
+                    return card.id === id;
+                });
+
+                if (card === undefined) {
+                    const response: playResponse = {
+                        success: false,
+                    };
+                    player.socket.emit("playResponse", response);
+                    return;
+                }
+
+                const canPlay = card.canPlayOn(this.topCard);
+                if (!canPlay) {
+                    const response: playResponse = {
+                        success: false,
+                    };
+                    player.socket.emit("playResponse", response);
+                    return;
+                }
+
+                const response: playResponse = {
+                    success: true,
+                };
+                player.socket.emit("playResponse", response);
+            });
+        });
 
         //Deal 7 cards to each player
         this.players.forEach((player) => {

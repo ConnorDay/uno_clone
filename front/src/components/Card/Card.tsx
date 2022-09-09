@@ -1,3 +1,5 @@
+import { Global } from "../../Global";
+
 export type cardObject = {
     color: string;
     value: string;
@@ -8,10 +10,15 @@ type Props = {
     card: cardObject;
 };
 
+function play(id: string) {
+    const { socket } = Global;
+    socket.emit("playRequest", id);
+}
+
 function UnoCard(props: Props) {
-    const { color, value } = props.card;
+    const { color, value, id } = props.card;
     return (
-        <button>
+        <button onClick={() => play(id)}>
             {color} {value}
         </button>
     );
