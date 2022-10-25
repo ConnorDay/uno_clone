@@ -98,6 +98,13 @@ function Game() {
                 {topCard?.color}
                 {topCard?.value}
             </div>
+            <button
+                onClick={() => {
+                    socket.emit("drawRequest");
+                }}
+            >
+                Draw
+            </button>
         </div>
     );
 }

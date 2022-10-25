@@ -31,12 +31,14 @@ export class Game extends Room {
     private playersConnected: string[] = [];
     private connecting = true;
 
-    private hands: { [key: string]: Card[] } = {};
+    public hands: { [key: string]: Card[] } = {};
 
-    private deck: UnoDeck = new UnoDeck();
-    private discard: Deck = new Deck();
+    public deck: UnoDeck = new UnoDeck();
+    public discard: Deck = new Deck();
 
-    private topCard: Card;
+    public topCard: Card;
+
+    public playDirection: 1 | -1 = 1;
 
     private _turn: number = 0;
 
@@ -79,6 +81,20 @@ export class Game extends Room {
         this.topCard = this.deck.draw()!;
 
         this.emitAll("roundStart");
+    }
+
+    public getNextPlayer(offset: number = 1): Player {
+        offset *= this.playDirection;
+        offset %= this.players.length; //Negative mod is fine here
+
+        let turn = offset + this.turn;
+        if (turn < 0) {
+            turn += this.players.length;
+        } else if (turn >= this.players.length) {
+            turn -= this.players.length;
+        }
+
+        return this.players[turn];
     }
 
     public sync() {
@@ -128,29 +144,66 @@ export class Game extends Room {
     }
 
     public set turn(num: number) {
-        this._turn = num % this.players.length;
+        //Not using modulus because it's valid for num to be negative.
+        if (num < 0) {
+            this._turn = this.players.length - 1;
+            return;
+        }
+
+        if (num >= this.players.length) {
+            num = 0;
+            return;
+        }
+
+        this._turn = num;
     }
     public get turn(): number {
         return this._turn;
     }
 
-    private giveCards(playerId: string, numCards: number) {
-        for (let i = 0; i < numCards; i++) {
-            let toDraw = this.deck.draw();
+    private drawCard(): Card | undefined {
+        let toDraw = this.deck.draw();
 
-            //Attempt to shuffle the discard back into the deck
+        //Attempt to shuffle the discard back into the deck
+        if (toDraw === undefined) {
+            //Merge discard back into the draw pile
+            this.discard.resetCards();
+            this.deck.mergeDecks(this.discard);
+            toDraw = this.deck.draw();
+
+            //No more available cards, just don't do anything
             if (toDraw === undefined) {
-                this.deck.mergeDecks(this.discard);
-                toDraw = this.deck.draw();
+                return;
+            }
+        }
 
-                //No more available cards, just don't do anything
-                if (toDraw === undefined) {
-                    return;
-                }
+        return toDraw;
+    }
+
+    public giveCards(playerId: string, numCards: number) {
+        for (let i = 0; i < numCards; i++) {
+            const toDraw = this.drawCard();
+            if (toDraw === undefined) {
+                return;
             }
 
             this.hands[playerId].push(toDraw);
         }
+    }
+
+    private playCard(player: Player, card: Card) {
+        this.turn += this.playDirection;
+
+        //Remove card from the player's hand
+        this.hands[player.id] = this.hands[player.id].filter((hCard) => {
+            return hCard.id !== card.id;
+        });
+        player.socket.emit("handSync", this.hands[player.id]);
+
+        this.discard.addCard(this.topCard);
+        this.topCard = card;
+
+        this.sync();
     }
 
     private start() {
@@ -169,6 +222,7 @@ export class Game extends Room {
 
         //Setup new listeners
         this.listenerEvents.push("playRequest");
+        this.listenerEvents.push("drawRequest");
         this.players.forEach((player) => {
             player.socket.on("playRequest", (id: string) => {
                 if (player.id !== this.players[this.turn].id) {
@@ -204,21 +258,27 @@ export class Game extends Room {
                     success: true,
                 };
 
-                this.turn++;
+                player.socket.emit("playResponse", response);
+                this.playCard(player, card);
+            });
 
-                //Remove card from the player's hand
-                this.hands[player.id] = this.hands[player.id].filter(
-                    (hCard) => {
-                        return hCard.id !== id;
-                    }
-                );
+            player.socket.on("drawRequest", () => {
+                if (player.id !== this.players[this.turn].id) {
+                    return;
+                }
+                let card = this.drawCard();
+
+                //Repeat until the player draws a card that can be played, or there are no more card to draw
+                while (card !== undefined && !card.canPlayOn(this.topCard)) {
+                    this.hands[player.id].push(card);
+                    card = this.drawCard();
+                }
+
                 player.socket.emit("handSync", this.hands[player.id]);
 
-                this.discard.addCard(this.topCard);
-                this.topCard = card;
-                player.socket.emit("playResponse", response);
-
-                this.sync();
+                if (card !== undefined) {
+                    this.playCard(player, card);
+                }
             });
         });
 

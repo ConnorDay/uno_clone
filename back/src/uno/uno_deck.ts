@@ -1,4 +1,5 @@
 import { Card, Color } from "./cards/card";
+import { DrawFour, DrawTwo, Reverse, Skip, Wild } from "./cards/special_cards";
 import { Deck } from "./deck";
 
 export class UnoDeck extends Deck {
@@ -23,15 +24,15 @@ export class UnoDeck extends Deck {
     protected addSpecialCards() {
         let colors: Color[] = ["red", "yellow", "green", "blue"];
         colors.forEach((color) => {
-            ["+2", "skip", "reverse"].forEach((value) => {
-                this.cards.push(new Card(color, value));
-                this.cards.push(new Card(color, value));
+            [DrawTwo, Skip, Reverse].forEach((cardType) => {
+                this.cards.push(new cardType(color));
+                this.cards.push(new cardType(color));
             });
         });
 
         for (let i = 0; i < 4; i++) {
-            this.cards.push(new Card("special", "+4"));
-            this.cards.push(new Card("special", "wild"));
+            this.cards.push(new DrawFour());
+            this.cards.push(new Wild());
         }
     }
 }
