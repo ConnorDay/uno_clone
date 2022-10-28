@@ -191,8 +191,6 @@ export class Game extends Room {
 	}
 
 	private playCard(player: Player, card: Card) {
-		this.turn += this.playDirection;
-
 		//Remove card from the player's hand
 		this.hands[player.id] = this.hands[player.id].filter((hCard) => {
 			return hCard.id !== card.id;
@@ -204,14 +202,41 @@ export class Game extends Room {
 
 		this.sync();
 
+		let toResolve = 0;
+
 		//Resolve card query
-		if (card.query !== undefined) {
-			player.socket.emit("queryRequest", card.query);
-			player.socket.once("queryResponse", (index: number) => {
-				card.onQueryResponse(index);
-				this.sync();
+		const queryProm = new Promise<void>((resolve, reject) => {
+			if (card.query !== undefined) {
+				console.log("Sending a query request");
+				toResolve++;
+
+				player.socket.emit("queryRequest", card.query);
+				player.socket.once("queryResponse", (index: number) => {
+					card.onQueryResponse(index);
+					this.sync();
+					console.log("got a query response");
+					resolve();
+				});
+			}
+		});
+
+		const turnEndProm = new Promise<void>((resolve, reject) => {
+			const checkEnd = () => {
+				if (toResolve === 0) {
+					resolve();
+				}
+			};
+
+			checkEnd();
+			queryProm.then(() => {
+				toResolve--;
+				checkEnd();
 			});
-		}
+		});
+		turnEndProm.then(() => {
+			this.turn += this.playDirection;
+			this.sync();
+		});
 	}
 
 	private start() {
