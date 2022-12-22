@@ -162,7 +162,9 @@ export class Game extends Room {
 			const target = this.getNextPlayer(0);
 			const event = new TurnEndEvent(this, target);
 			for (let status of this.statuses[target.id]) {
-				console.log(`running onTurnEnd for player '${target.name}'`);
+				console.log(
+					`running onTurnEnd of ${status.name} for player '${target.name}'`
+				);
 				status.onTurnEnd(event);
 			}
 		}
@@ -174,7 +176,9 @@ export class Game extends Room {
 			const target = this.getNextPlayer(0);
 			const event = new TurnStartEvent(this, target);
 			for (let status of this.statuses[target.id]) {
-				console.log(`running onTurnStart for player '${target.name}'`);
+				console.log(
+					`running onTurnStart of ${status.name} for player '${target.name}'`
+				);
 				status.onTurnStart(event);
 			}
 		}
@@ -205,6 +209,7 @@ export class Game extends Room {
 	public async giveCards(drawEvent: DrawEvent, doSync: boolean = true) {
 		console.log(`drawing cards for player '${drawEvent.target.name}`);
 		for (let status of this.statuses[drawEvent.target.id]) {
+			console.log(`running onDraw for status ${status.name}`);
 			await status.onDraw(drawEvent);
 		}
 
@@ -260,7 +265,7 @@ export class Game extends Room {
 
 	public addStatus(player: Player, status: Status) {
 		this.statuses[player.id].push(status);
-		console.log(`added status to player '${player.name}'`);
+		console.log(`added status ${status.name} to player '${player.name}'`);
 	}
 	public removeStatus(player: Player, status: Status) {
 		const prev = this.statuses[player.id].length;
@@ -269,9 +274,9 @@ export class Game extends Room {
 		);
 
 		console.log(
-			`removed status from player '${player.name}'. ${prev} -> ${
-				this.statuses[player.id].length
-			}`
+			`removed status ${status.name} from player '${
+				player.name
+			}'. ${prev} -> ${this.statuses[player.id].length}`
 		);
 	}
 
@@ -288,7 +293,7 @@ export class Game extends Room {
 		}
 
 		for (let status of this.statuses[player.id]) {
-			console.log("applying status");
+			console.log(`running on play for ${status.name}`);
 			await status.onPlay(event);
 		}
 
@@ -304,12 +309,12 @@ export class Game extends Room {
 		});
 		player.socket.emit("handSync", this.hands[player.id]);
 
+		//Update topcard
 		this.discard.addCard(this.topCard);
 		this.topCard = card;
-
 		this.sync();
 
-		//Resolve card query
+		//send card query if exists
 		const queryProm = new Promise<void>((resolve, reject) => {
 			if (card.query !== undefined) {
 				console.log("Sending a query request");
@@ -326,9 +331,10 @@ export class Game extends Room {
 			}
 		});
 
+		//Wait for query to resolve
 		await queryProm;
 
-		//Resolve Card Effects
+		//Apply Card Effects
 		const effectProm = new Promise<void>(async (resolve, reject) => {
 			const effect = card.getEffect();
 			if (effect === undefined) {
@@ -341,6 +347,7 @@ export class Game extends Room {
 			resolve();
 		});
 
+		//Wait for effects to resolve
 		await effectProm;
 
 		console.log(`player '${player.name}' played a card successfully`);
