@@ -2,6 +2,7 @@ import { DrawEvent, PlayEvent, TurnEndEvent, TurnStartEvent } from "./event";
 import { Card } from "./uno/cards/card";
 
 export abstract class Status {
+	abstract name: string;
 	async onTurnStart(event: TurnStartEvent) {}
 	async onTurnEnd(event: TurnEndEvent) {}
 	async onDraw(event: DrawEvent) {}
@@ -9,6 +10,7 @@ export abstract class Status {
 }
 
 export class SkipStatus extends Status {
+	name = "SkipStatus";
 	async onTurnStart(event: TurnStartEvent) {
 		event.game.turn += event.game.playDirection;
 	}
@@ -18,6 +20,7 @@ export class SkipStatus extends Status {
 }
 
 export class DrawStatus extends Status {
+	name = "DrawStatus";
 	private _matchValue: string;
 	private _toDraw: number;
 	private _increment: number;
