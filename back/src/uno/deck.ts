@@ -27,6 +27,12 @@ export class Deck {
         this.cards.push(card);
     }
 
+    public resetCards() {
+        this.cards.forEach((card) => {
+            card.reset();
+        });
+    }
+
     public mergeDecks(deck: Deck) {
         while (deck.length > 0) {
             const drawnCard = deck.draw();

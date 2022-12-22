@@ -1,181 +1,427 @@
-import { textChangeRangeIsUnchanged } from "typescript";
+import { DrawEvent, PlayEvent, TurnEndEvent, TurnStartEvent } from "../event";
 import { Player } from "../player";
 import { Room } from "../room";
+import { Status } from "../status";
 import { Card } from "./cards/card";
 import { Deck } from "./deck";
 import { UnoDeck } from "./uno_deck";
 
 type playerSyncConnectingObject = {
-    name: string;
-    id: string;
-    connected: boolean;
+	name: string;
+	id: string;
+	connected: boolean;
 };
 
 type playerSyncObject = {
-    name: string;
-    id: string;
-    numCards: number;
+	name: string;
+	id: string;
+	numCards: number;
 };
 
 type gameSyncObject = {
-    turn: number;
-    players: playerSyncObject[];
-    topCard: Card;
+	turn: number;
+	players: playerSyncObject[];
+	topCard: Card;
+};
+
+type playResponse = {
+	success: boolean;
 };
 
 export class Game extends Room {
-    private playersConnected: string[] = [];
-    private connecting = true;
+	private playersConnected: string[] = [];
+	private connecting = true;
 
-    private hands: { [key: string]: Card[] } = {};
+	public hands: { [key: string]: Card[] } = {};
+	public statuses: { [key: string]: Status[] } = {};
 
-    private deck: UnoDeck = new UnoDeck();
-    private discard: Deck = new Deck();
+	public deck: UnoDeck = new UnoDeck();
+	public discard: Deck = new Deck();
 
-    private topCard: Card;
+	public disabledCards: string[] = [];
 
-    private _turn: number = 0;
+	public topCard: Card;
 
-    constructor(code: string, playerList: Player[]) {
-        super(code);
+	public playDirection: 1 | -1 = 1;
 
-        this.listenerEvents.push("gameLoaded");
+	private _turn: number = 0;
 
-        // Wait for each player to connect
-        playerList.forEach((player) => {
-            this.addPlayer(player, false);
+	constructor(code: string, playerList: Player[]) {
+		super(code);
 
-            player.socket.on("gameLoaded", () => {
-                //Make sure we haven't already marked this player as connected
-                if (this.playersConnected.includes(player.id)) {
-                    console.warn(
-                        `user '${player.name}' attempted to connect, but was already connected`
-                    );
-                    return;
-                }
+		this.listenerEvents.push("gameLoaded");
 
-                console.log(
-                    `user '${player.name}' in '${this.code}' has connected to the game`
-                );
+		// Wait for each player to connect
+		playerList.forEach((player) => {
+			this.addPlayer(player, false);
 
-                this.playersConnected.push(player.id);
+			player.socket.on("gameLoaded", () => {
+				//Make sure we haven't already marked this player as connected
+				if (this.playersConnected.includes(player.id)) {
+					console.warn(
+						`user '${player.name}' attempted to connect, but was already connected`
+					);
+					return;
+				}
 
-                this.sync();
+				console.log(
+					`user '${player.name}' in '${this.code}' has connected to the game`
+				);
 
-                //check if all players have connected
-                if (this.players.length === this.playersConnected.length) {
-                    this.start();
-                }
-            });
-        });
+				this.playersConnected.push(player.id);
 
-        this.deck.shuffle();
+				this.sync();
 
-        //This is guaranteed to not be undefined because the deck was just made
-        this.topCard = this.deck.draw()!;
+				//check if all players have connected
+				if (this.players.length === this.playersConnected.length) {
+					this.start();
+				}
+			});
+		});
 
-        this.emitAll("roundStart");
-    }
+		this.deck.shuffle();
 
-    public sync() {
-        //sync for when players are connecting
-        if (this.connecting) {
-            const toSend: playerSyncConnectingObject[] = [];
-            this.players.forEach((player) => {
-                toSend.push({
-                    name: player.name,
-                    id: player.id,
-                    connected: this.playersConnected.includes(player.id),
-                });
-            });
-            this.emitAll("playerSync", toSend);
-            return;
-        }
+		//This is guaranteed to not be undefined because the deck was just made
+		this.topCard = this.deck.draw()!;
 
-        const playerSync: playerSyncObject[] = [];
-        this.players.forEach((player) => {
-            playerSync.push({
-                name: player.name,
-                id: player.id,
-                numCards: this.hands[player.id].length,
-            });
-        });
+		this.emitAll("roundStart");
+	}
 
-        const toSend: gameSyncObject = {
-            turn: this.turn,
-            players: playerSync,
-            topCard: this.topCard,
-        };
+	public getNextPlayer(offset: number = 1): Player {
+		offset *= this.playDirection;
+		offset %= this.players.length; //Negative mod is fine here
 
-        this.emitAll("gameSync", toSend);
-    }
+		let turn = offset + this.turn;
+		if (turn < 0) {
+			turn += this.players.length;
+		} else if (turn >= this.players.length) {
+			turn -= this.players.length;
+		}
 
-    public removePlayer(toRemove: Player, sync: boolean = true): void {
-        super.removePlayer(toRemove, false);
+		return this.players[turn];
+	}
 
-        //Make sure that the turn is still valid
-        if (!this.connecting) {
-            this.turn = this.turn;
-        }
+	public sync() {
+		//sync for when players are connecting
+		if (this.connecting) {
+			const toSend: playerSyncConnectingObject[] = [];
+			this.players.forEach((player) => {
+				toSend.push({
+					name: player.name,
+					id: player.id,
+					connected: this.playersConnected.includes(player.id),
+				});
+			});
+			this.emitAll("playerSync", toSend);
+			return;
+		}
 
-        if (sync) {
-            this.sync();
-        }
-    }
+		const playerSync: playerSyncObject[] = [];
+		this.players.forEach((player) => {
+			playerSync.push({
+				name: player.name,
+				id: player.id,
+				numCards: this.hands[player.id].length,
+			});
+		});
 
-    public set turn(num: number) {
-        this._turn = num % this.players.length;
-    }
-    public get turn(): number {
-        return this._turn;
-    }
+		const toSend: gameSyncObject = {
+			turn: this.turn,
+			players: playerSync,
+			topCard: this.topCard,
+		};
 
-    private giveCards(playerId: string, numCards: number) {
-        for (let i = 0; i < numCards; i++) {
-            let toDraw = this.deck.draw();
+		this.emitAll("gameSync", toSend);
+	}
 
-            //Attempt to shuffle the discard back into the deck
-            if (toDraw === undefined) {
-                this.deck.mergeDecks(this.discard);
-                toDraw = this.deck.draw();
+	public removePlayer(toRemove: Player, sync: boolean = true): void {
+		super.removePlayer(toRemove, false);
 
-                //No more available cards, just don't do anything
-                if (toDraw === undefined) {
-                    return;
-                }
-            }
+		//Make sure that the turn is still valid
+		if (!this.connecting) {
+			this.turn = this.turn;
+		}
 
-            this.hands[playerId].push(toDraw);
-        }
-    }
+		if (sync) {
+			this.sync();
+		}
+	}
 
-    private start() {
-        this.connecting = false;
-        console.log(`game started for '${this.code}'`);
+	public set turn(num: number) {
+		//Not using modulus because it's valid for num to be negative.
+		if (num < 0) {
+			num = this.players.length - 1;
+		}
 
-        //remove loaded listener for all players
-        this.players.forEach((player) => {
-            player.socket.removeAllListeners("gameLoaded");
-        });
+		if (num >= this.players.length) {
+			num = 0;
+		}
 
-        //Remove gameLoaded event from listenerEvents
-        this.listenerEvents = this.listenerEvents.filter(
-            (event) => event !== "gameLoaded"
-        );
+		//Trigger End Turn Event
+		{
+			const target = this.getNextPlayer(0);
+			const event = new TurnEndEvent(this, target);
+			for (let status of this.statuses[target.id]) {
+				console.log(`running onTurnEnd for player '${target.name}'`);
+				status.onTurnEnd(event);
+			}
+		}
 
-        //Deal 7 cards to each player
-        this.players.forEach((player) => {
-            this.hands[player.id] = [];
-            this.giveCards(player.id, 7);
+		this._turn = num;
 
-            player.socket.emit("handSync", this.hands[player.id]);
-        });
+		//Trigger Start Turn Event
+		{
+			const target = this.getNextPlayer(0);
+			const event = new TurnStartEvent(this, target);
+			for (let status of this.statuses[target.id]) {
+				console.log(`running onTurnStart for player '${target.name}'`);
+				status.onTurnStart(event);
+			}
+		}
+	}
+	public get turn(): number {
+		return this._turn;
+	}
 
-        //Select a starting player
-        this.turn = Math.floor(Math.random() * this.players.length);
+	private drawCard(): Card | undefined {
+		let toDraw = this.deck.draw();
 
-        this.sync();
+		//Attempt to shuffle the discard back into the deck
+		if (toDraw === undefined) {
+			//Merge discard back into the draw pile
+			this.discard.resetCards();
+			this.deck.mergeDecks(this.discard);
+			toDraw = this.deck.draw();
 
-        this.emitAll("gameStart");
-    }
+			//No more available cards, just don't do anything
+			if (toDraw === undefined) {
+				return;
+			}
+		}
+
+		return toDraw;
+	}
+
+	public async giveCards(drawEvent: DrawEvent, doSync: boolean = true) {
+		console.log(`drawing cards for player '${drawEvent.target.name}`);
+		for (let status of this.statuses[drawEvent.target.id]) {
+			await status.onDraw(drawEvent);
+		}
+
+		if (drawEvent.isDisabled) {
+			console.log("drawing cancelled");
+			return;
+		}
+
+		let numDrawn = 0;
+		let foundPlayable: Card | undefined = undefined;
+		while (
+			numDrawn < drawEvent.toDraw ||
+			(drawEvent.drawUntilPlayable && foundPlayable === undefined)
+		) {
+			const toDraw = this.drawCard();
+			if (toDraw === undefined) {
+				console.warn("Unable to draw additional cards");
+				break;
+			}
+
+			this.hands[drawEvent.target.id].push(toDraw);
+
+			if (toDraw.canPlayOn(this.topCard)) {
+				console.log("drew a playable card");
+				foundPlayable = toDraw;
+				if (drawEvent.stopOnPlayable) {
+					console.log("stopping on playable card draw");
+					break;
+				}
+			}
+
+			numDrawn++;
+		}
+
+		console.log(`player '${drawEvent.target.name}' drew ${numDrawn} cards`);
+
+		if (doSync) {
+			console.log("syncing...");
+			drawEvent.target.socket.emit(
+				"handSync",
+				this.hands[drawEvent.target.id]
+			);
+			this.sync();
+		}
+
+		if (drawEvent.playPlayable && foundPlayable !== undefined) {
+			console.log(
+				`playing playable card '${foundPlayable.color} ${foundPlayable.value}`
+			);
+			this.playCard(new PlayEvent(this, drawEvent.target, foundPlayable));
+		}
+	}
+
+	public addStatus(player: Player, status: Status) {
+		this.statuses[player.id].push(status);
+		console.log(`added status to player '${player.name}'`);
+	}
+	public removeStatus(player: Player, status: Status) {
+		const prev = this.statuses[player.id].length;
+		this.statuses[player.id] = this.statuses[player.id].filter(
+			(s) => s !== status
+		);
+
+		console.log(
+			`removed status from player '${player.name}'. ${prev} -> ${
+				this.statuses[player.id].length
+			}`
+		);
+	}
+
+	private async playCard(event: PlayEvent): Promise<boolean> {
+		const player = event.target;
+		const card = event.toPlay;
+		console.log(
+			`Player '${player.name}' requested to play '${card.color} ${card.value}'`
+		);
+
+		if (!card.canPlayOn(this.topCard)) {
+			console.log("cannot play on card");
+			return false;
+		}
+
+		for (let status of this.statuses[player.id]) {
+			console.log("applying status");
+			await status.onPlay(event);
+		}
+
+		if (event.isDisabled) {
+			console.log("play was disabled");
+			return false;
+		}
+
+		//Remove card from the player's hand
+		console.log(`removing card from '${player.name}'`);
+		this.hands[player.id] = this.hands[player.id].filter((hCard) => {
+			return hCard.id !== card.id;
+		});
+		player.socket.emit("handSync", this.hands[player.id]);
+
+		this.discard.addCard(this.topCard);
+		this.topCard = card;
+
+		this.sync();
+
+		//Resolve card query
+		const queryProm = new Promise<void>((resolve, reject) => {
+			if (card.query !== undefined) {
+				console.log("Sending a query request");
+
+				player.socket.emit("queryRequest", card.query);
+				player.socket.once("queryResponse", (index: number) => {
+					card.onQueryResponse(index);
+					this.sync();
+					console.log("got a query response");
+					resolve();
+				});
+			} else {
+				resolve();
+			}
+		});
+
+		await queryProm;
+
+		//Resolve Card Effects
+		const effectProm = new Promise<void>(async (resolve, reject) => {
+			const effect = card.getEffect();
+			if (effect === undefined) {
+				resolve();
+				return;
+			}
+
+			console.log("Applying card effect");
+			await effect.resolve(this);
+			resolve();
+		});
+
+		await effectProm;
+
+		console.log(`player '${player.name}' played a card successfully`);
+
+		this.turn += this.playDirection;
+		this.sync();
+
+		return true;
+	}
+
+	private async start() {
+		this.connecting = false;
+		console.log(`game started for '${this.code}'`);
+
+		//remove loaded listener for all players
+		this.players.forEach((player) => {
+			player.socket.removeAllListeners("gameLoaded");
+		});
+
+		//Remove gameLoaded event from listenerEvents
+		this.listenerEvents = this.listenerEvents.filter(
+			(event) => event !== "gameLoaded"
+		);
+
+		//Setup new listeners
+		this.listenerEvents.push("playRequest");
+		this.listenerEvents.push("drawRequest");
+		this.players.forEach((player) => {
+			player.socket.on("playRequest", async (id: string) => {
+				if (player.id !== this.players[this.turn].id) {
+					const response: playResponse = {
+						success: false,
+					};
+					player.socket.emit("playResponse", response);
+					return;
+				}
+
+				const card = this.hands[player.id].find((card) => {
+					return card.id === id;
+				});
+
+				if (card === undefined) {
+					const response: playResponse = {
+						success: false,
+					};
+					player.socket.emit("playResponse", response);
+					return;
+				}
+
+				const response: playResponse = {
+					success: await this.playCard(
+						new PlayEvent(this, player, card)
+					),
+				};
+
+				player.socket.emit("playResponse", response);
+			});
+
+			player.socket.on("drawRequest", async () => {
+				if (player.id !== this.players[this.turn].id) {
+					return;
+				}
+
+				const event = new DrawEvent(this, player, 0, true, true, true);
+				this.giveCards(event);
+			});
+		});
+
+		//Deal 7 cards to each player and instantiate statuses
+		for (let player of this.players) {
+			this.hands[player.id] = [];
+			this.statuses[player.id] = [];
+			await this.giveCards(new DrawEvent(this, player, 7), false);
+			player.socket.emit("handSync", this.hands[player.id]);
+		}
+
+		//Select a starting player
+		this.turn = Math.floor(Math.random() * this.players.length);
+
+		this.sync();
+
+		this.emitAll("gameStart");
+	}
 }
