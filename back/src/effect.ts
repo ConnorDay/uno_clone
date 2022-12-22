@@ -1,41 +1,43 @@
+import { DrawEvent } from "./event";
+import { DrawStatus, SkipStatus } from "./status";
 import { Game } from "./uno";
 
 export abstract class Effect {
-    abstract resolve(game: Game): Promise<void>;
+	abstract resolve(game: Game): Promise<void>;
 }
 
 export class DrawEffect extends Effect {
-    private _toDraw: number;
-    constructor(num: number) {
-        super();
+	private _value: string;
+	private _toDraw: number;
+	constructor(value: string, num: number) {
+		super();
 
-        this._toDraw = num;
-    }
+		this._value = value;
+		this._toDraw = num;
+	}
 
-    resolve(game: Game): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            const target = game.getNextPlayer();
-            game.giveCards(target.id, this._toDraw);
-            resolve();
-        });
-    }
+	async resolve(game: Game): Promise<void> {
+		game.addStatus(
+			game.getNextPlayer(),
+			new DrawStatus(this._value, this._toDraw, this._toDraw)
+		);
+	}
 }
 
 export class SkipEffect extends Effect {
-    resolve(game: Game): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            //We need statuses.
-            console.log("skipped :)");
-            resolve();
-        });
-    }
+	resolve(game: Game): Promise<void> {
+		return new Promise<void>((resolve, reject) => {
+			game.addStatus(game.getNextPlayer(), new SkipStatus());
+			resolve();
+		});
+	}
 }
 
 export class ReverseEffect extends Effect {
-    resolve(game: Game): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            game.playDirection *= -1;
-            resolve();
-        });
-    }
+	resolve(game: Game): Promise<void> {
+		return new Promise<void>((resolve, reject) => {
+			game.playDirection *= -1;
+			resolve();
+		});
+	}
 }
